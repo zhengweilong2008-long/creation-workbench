@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>创作工作台</title>
+<style>
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f4f2; color: #222; font-size: 17px; line-height: 1.5; }
+  header { position: sticky; top: 0; z-index: 10; background: #1c1c1e; color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 20px; margin: 0; flex: 1; }
+  #saveState { font-size: 13px; color: #a7f3a7; white-space: nowrap; }
+  main { padding: 14px 14px 40px; max-width: 720px; margin: 0 auto; }
+  button, select, input, textarea { font-size: 17px; font-family: inherit; }
+  button { min-height: 48px; min-width: 48px; padding: 10px 16px; border: none; border-radius: 10px; background: #2563eb; color: #fff; cursor: pointer; }
+  button.secondary { background: #e5e5ea; color: #222; }
+  button.danger { background: #dc2626; }
+  button.small { min-height: 40px; padding: 6px 12px; font-size: 15px; }
+  .tabs { display: flex; gap: 10px; margin-bottom: 12px; }
+  .tabs button { flex: 1; background: #e5e5ea; color: #222; }
+  .tabs button.active { background: #1c1c1e; color: #fff; }
+  .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card h2 { margin: 0 0 6px; font-size: 19px; }
+  .card p { margin: 4px 0; color: #555; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 14px; color: #fff; background: #6b7280; }
+  .badge.进行中 { background: #2563eb; } .badge.已完成 { background: #16a34a; }
+  .badge.待验收 { background: #d97706; } .badge.冻结 { background: #6b7280; }
+  .badge.待做 { background: #9ca3af; } .badge.已通过 { background: #16a34a; }
+  .badge.失败, .badge.不通过 { background: #dc2626; } .badge.生成中 { background: #7c3aed; }
+  .badge.待排队 { background: #d97706; }
+  .badge.待发 { background: #9ca3af; } .badge.已发给用户 { background: #16a34a; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  .row > button { flex: 0 0 auto; }
+  label { display: block; font-size: 14px; color: #666; margin: 12px 0 4px; }
+  input[type=text], input[type=url], select, textarea { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; }
+  textarea { min-height: 64px; resize: vertical; }
+  .item { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
+  .item h3 { margin: 0 0 4px; font-size: 17px; }
+  .section-title { font-size: 18px; margin: 22px 0 8px; border-bottom: 2px solid #222; padding-bottom: 4px; }
+  .thumb { width: 100%; max-width: 320px; border-radius: 8px; margin-top: 6px; display: block; }
+  .muted { color: #888; font-size: 14px; }
+  .topbar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .topbar button { flex: 1; }
+  .hidden { display: none; }
+  .empty { color: #888; text-align: center; padding: 24px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎨 创作工作台</h1>
+  <span id="saveState">已保存</span>
+</header>
+<main>
+  <div class="tabs">
+    <button id="tabBtnVideo" class="active" onclick="switchTab('video')">🎬 视频</button>
+    <button id="tabBtnImage" onclick="switchTab('image')">🖼 生图</button>
+  </div>
+
+  <div id="tab-video">
+    <div id="v-view-list">
+      <div class="topbar">
+        <button onclick="vAddProject()">＋ 新建项目</button>
+        <button class="secondary" onclick="vExportJson()">导出备份</button>
+        <button class="secondary" onclick="document.getElementById('v-importFile').click()">导入</button>
+        <input type="file" id="v-importFile" accept=".json,application/json" class="hidden" onchange="vImportJson(event)">
+      </div>
+      <div id="v-projectList"></div>
+    </div>
+    <div id="v-view-detail" class="hidden">
+      <div class="topbar">
+        <button class="secondary" onclick="vShowList()">← 返回项目列表</button>
+      </div>
+      <div id="v-projectDetail"></div>
+    </div>
+  </div>
+
+  <div id="tab-image" class="hidden">
+    <div id="i-view-list">
+      <div class="topbar">
+        <button onclick="iAddProject()">＋ 新建项目</button>
+        <button class="secondary" onclick="iShowGallery()">🖼 画廊</button>
+        <button class="secondary" onclick="iExportJson()">导出备份</button>
+        <button class="secondary" onclick="document.getElementById('i-importFile').click()">导入</button>
+        <input type="file" id="i-importFile" accept=".json,application/json" class="hidden" onchange="iImportJson(event)">
+      </div>
+      <div id="i-projectList"></div>
+    </div>
+    <div id="i-view-detail" class="hidden">
+      <div class="topbar">
+        <button class="secondary" onclick="iShowList()">← 返回项目列表</button>
+      </div>
+      <div id="i-projectDetail"></div>
+    </div>
+    <div id="i-view-gallery" class="hidden">
+      <div class="topbar">
+        <button class="secondary" onclick="iShowList()">← 返回项目列表</button>
+      </div>
+      <div id="i-galleryBox"></div>
+    </div>
+  </div>
+</main>
+<script>
+// ---- 共享工具 ----
+let currentTab = 'video';
+let saveTimerV = null;
+let saveTimerI = null;
+
+function uid() { return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function isHttpUrl(u) { return /^https?:\/\//.test(u || ''); }
+function statusOptions(list, cur) {
+  return list.map(s => `<option ${s === cur ? 'selected' : ''}>${esc(s)}</option>`).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabBtnVideo').classList.toggle('active', tab === 'video');
+  document.getElementById('tabBtnImage').classList.toggle('active', tab === 'image');
+  document.getElementById('tab-video').classList.toggle('hidden', tab !== 'video');
+  document.getElementById('tab-image').classList.toggle('hidden', tab !== 'image');
+  if (tab === 'video') vRender(); else iRender();
+  window.scrollTo(0, 0);
+}
+
+function setSaveState(text, color) {
+  const el = document.getElementById('saveState');
+  el.textContent = text; el.style.color = color;
+}
+
+async function load() {
+  await Promise.all([vLoad(), iLoad()]);
+  if (currentTab === 'video') vRender(); else iRender();
+}
+
+// ---- 视频区 ----
+let vState = { projects: [] };
+let vCurrentProjectId = null;
+
+const V_PROJECT_STATUS = ['进行中', '待验收', '已完成', '冻结', '待定'];
+const V_SHOT_STATUS = ['待做', '进行中', '待验收', '已完成'];
+const V_TASK_STATUS = ['待排队', '生成中', '已完成', '失败'];
+const V_VERDICTS = ['待验收', '已通过', '不通过'];
+
+async function vLoad() {
+  try {
+    const r = await fetch('/api/video/state');
+    vState = await r.json();
+    if (!Array.isArray(vState.projects)) vState = { projects: [] };
+  } catch (e) {
+    vState = { projects: [] };
+    alert('视频数据加载失败：' + e.message);
+  }
+}
+
+function vMarkDirty() {
+  setSaveState('保存中…', '#fbbf24');
+  clearTimeout(saveTimerV);
+  saveTimerV = setTimeout(vSave, 600);
+}
+
+async function vSave() {
+  try {
+    const r = await fetch('/api/video/state', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(vState)
+    });
+    if (r.ok) setSaveState('已保存', '#a7f3a7');
+    else setSaveState('保存失败', '#f87171');
+  } catch (e) {
+    setSaveState('保存失败', '#f87171');
+  }
+}
+
+function vGetProject(id) { return vState.projects.find(p => p.id === id); }
+
+function vRender() {
+  if (vCurrentProjectId) vRenderDetail(); else vRenderList();
+}
+
+function vRenderList() {
+  document.getElementById('v-view-list').classList.remove('hidden');
+  document.getElementById('v-view-detail').classList.add('hidden');
+  const box = document.getElementById('v-projectList');
+  if (!vState.projects.length) { box.innerHTML = '<p class="empty">还没有项目，点“新建项目”开始。</p>'; return; }
+  box.innerHTML = vState.projects.map(p => `
+    <div class="card" onclick="vOpenProject('${esc(p.id)}')">
+      <h2>${esc(p.name)}</h2>
+      <p><span class="badge ${esc(p.status)}">${esc(p.status)}</span></p>
+      <p>${esc(p.notes || '')}</p>
+      <p class="muted">分镜 ${(p.shots || []).length} · 生成任务 ${(p.tasks || []).length} · 成片 ${(p.clips || []).length}</p>
+    </div>`).join('');
+}
+
+function vOpenProject(id) { vCurrentProjectId = id; vRender(); window.scrollTo(0, 0); }
+function vShowList() { vCurrentProjectId = null; vRender(); window.scrollTo(0, 0); }
+
+function vAddProject() {
+  const p = { id: uid(), name: '新项目', status: '待定', notes: '', shots: [], tasks: [], clips: [] };
+  vState.projects.push(p);
+  vMarkDirty(); vOpenProject(p.id);
+}
+
+function vDeleteProject(id) {
+  if (!confirm('确定删除这个项目吗？分镜、任务、成片都会一起删掉。')) return;
+  vState.projects = vState.projects.filter(p => p.id !== id);
+  vCurrentProjectId = null; vMarkDirty(); vRender();
+}
+
+function vRenderDetail() {
+  document.getElementById('v-view-list').classList.add('hidden');
+  document.getElementById('v-view-detail').classList.remove('hidden');
+  const p = vGetProject(vCurrentProjectId);
+  if (!p) { vShowList(); return; }
+  p.shots = p.shots || []; p.tasks = p.tasks || []; p.clips = p.clips || [];
+  const box = document.getElementById('v-projectDetail');
+  box.innerHTML = `
+    <div class="card">
+      <label>项目名称</label>
+      <input type="text" value="${esc(p.name)}" onchange="vUpdateProjectField('${esc(p.id)}','name',this.value)">
+      <label>状态</label>
+      <select onchange="vUpdateProjectField('${esc(p.id)}','status',this.value)">${statusOptions(V_PROJECT_STATUS, p.status)}</select>
+      <label>备注 / 铁律</label>
+      <textarea onchange="vUpdateProjectField('${esc(p.id)}','notes',this.value)">${esc(p.notes)}</textarea>
+      <div style="margin-top:14px"><button class="danger small" onclick="vDeleteProject('${esc(p.id)}')">删除项目</button></div>
+    </div>
+
+    <h2 class="section-title">🎞 分镜 / 镜头</h2>
+    <div id="v-shots">${p.shots.map((s, i) => vShotHtml(p, s, i)).join('') || '<p class="empty">暂无分镜</p>'}</div>
+    <button onclick="vAddShot('${esc(p.id)}')">＋ 添加分镜</button>
+
+    <h2 class="section-title">⚙️ 生成任务</h2>
+    <div id="v-tasks">${p.tasks.map((t, i) => vTaskHtml(p, t, i)).join('') || '<p class="empty">暂无生成任务（本工作台不跑生成，只记录）</p>'}</div>
+    <button onclick="vAddTask('${esc(p.id)}')">＋ 添加生成任务</button>
+
+    <h2 class="section-title">🎥 成片</h2>
+    <div id="v-clips">${p.clips.map((c, i) => vClipHtml(p, c, i)).join('') || '<p class="empty">暂无成片</p>'}</div>
+    <button onclick="vAddClip('${esc(p.id)}')">＋ 添加成片</button>`;
+}
+
+function vShotHtml(p, s, i) {
+  const refs = (s.refs || []).join('\n');
+  const thumbs = (s.refs || []).filter(isHttpUrl).map(u =>
+    `<img class="thumb" src="${esc(u)}" loading="lazy" onerror="this.style.display='none'">`).join('');
+  return `<div class="item">
+    <div class="row"><input type="text" value="${esc(s.title)}" placeholder="分镜标题" onchange="vUpdateShot('${esc(p.id)}',${i},'title',this.value)">
+    <select style="max-width:130px" onchange="vUpdateShot('${esc(p.id)}',${i},'status',this.value)">${statusOptions(V_SHOT_STATUS, s.status)}</select></div>
+    <label>说明</label>
+    <textarea onchange="vUpdateShot('${esc(p.id)}',${i},'desc',this.value)">${esc(s.desc)}</textarea>
+    <label>视频提示词</label>
+    <textarea onchange="vUpdateShot('${esc(p.id)}',${i},'prompt',this.value)">${esc(s.prompt)}</textarea>
+    <label>参考图（每行一个链接或路径）</label>
+    <textarea onchange="vUpdateShotRefs('${esc(p.id)}',${i},this.value)">${esc(refs)}</textarea>
+    ${thumbs}
+    <div style="margin-top:10px"><button class="danger small" onclick="vDeleteShot('${esc(p.id)}',${i})">删除分镜</button></div>
+  </div>`;
+}
+
+function vTaskHtml(p, t, i) {
+  return `<div class="item">
+    <div class="row"><input type="text" value="${esc(t.name)}" placeholder="任务名称" onchange="vUpdateTask('${esc(p.id)}',${i},'name',this.value)">
+    <select style="max-width:130px" onchange="vUpdateTask('${esc(p.id)}',${i},'status',this.value)">${statusOptions(V_TASK_STATUS, t.status)}</select></div>
+    <label>模型（如 Wan / LTX / Agnes 队列）</label>
+    <input type="text" value="${esc(t.model)}" onchange="vUpdateTask('${esc(p.id)}',${i},'model',this.value)">
+    <label>结果 / 备注</label>
+    <input type="text" value="${esc(t.note)}" onchange="vUpdateTask('${esc(p.id)}',${i},'note',this.value)">
+    <div style="margin-top:10px"><button class="danger small" onclick="vDeleteTask('${esc(p.id)}',${i})">删除任务</button></div>
+  </div>`;
+}
+
+function vClipHtml(p, c, i) {
+  return `<div class="item">
+    <div class="row"><input type="text" value="${esc(c.name)}" placeholder="成片名称" onchange="vUpdateClip('${esc(p.id)}',${i},'name',this.value)">
+    <select style="max-width:130px" onchange="vUpdateClip('${esc(p.id)}',${i},'verdict',this.value)">${statusOptions(V_VERDICTS, c.verdict)}</select></div>
+    <label>文件 / 链接</label>
+    <input type="text" value="${esc(c.link)}" placeholder="https://… 或文件路径" onchange="vUpdateClip('${esc(p.id)}',${i},'link',this.value)">
+    ${c.link ? `<p><a href="${esc(c.link)}" target="_blank" rel="noopener">打开成片 ↗</a></p>` : ''}
+    <div style="margin-top:10px"><button class="danger small" onclick="vDeleteClip('${esc(p.id)}',${i})">删除成片</button></div>
+  </div>`;
+}
+
+function vUpdateProjectField(id, field, value) { const p = vGetProject(id); if (p) { p[field] = value; vMarkDirty(); vRenderList(); } }
+function vUpdateShot(pid, i, field, value) { const p = vGetProject(pid); if (p && p.shots[i]) { p.shots[i][field] = value; vMarkDirty(); } }
+function vUpdateShotRefs(pid, i, value) { const p = vGetProject(pid); if (p && p.shots[i]) { p.shots[i].refs = value.split('\n').map(s => s.trim()).filter(Boolean); vMarkDirty(); vRenderDetail(); } }
+function vUpdateTask(pid, i, field, value) { const p = vGetProject(pid); if (p && p.tasks[i]) { p.tasks[i][field] = value; vMarkDirty(); } }
+function vUpdateClip(pid, i, field, value) { const p = vGetProject(pid); if (p && p.clips[i]) { p.clips[i][field] = value; vMarkDirty(); } }
+
+function vAddShot(pid) { const p = vGetProject(pid); if (!p) return; p.shots.push({ id: uid(), title: '新分镜', status: '待做', desc: '', prompt: '', refs: [] }); vMarkDirty(); vRenderDetail(); }
+function vAddTask(pid) { const p = vGetProject(pid); if (!p) return; p.tasks.push({ id: uid(), name: '新任务', model: '', status: '待排队', note: '' }); vMarkDirty(); vRenderDetail(); }
+function vAddClip(pid) { const p = vGetProject(pid); if (!p) return; p.clips.push({ id: uid(), name: '新成片', link: '', verdict: '待验收' }); vMarkDirty(); vRenderDetail(); }
+function vDeleteShot(pid, i) { const p = vGetProject(pid); if (p && confirm('删除这个分镜？')) { p.shots.splice(i, 1); vMarkDirty(); vRenderDetail(); } }
+function vDeleteTask(pid, i) { const p = vGetProject(pid); if (p && confirm('删除这个任务？')) { p.tasks.splice(i, 1); vMarkDirty(); vRenderDetail(); } }
+function vDeleteClip(pid, i) { const p = vGetProject(pid); if (p && confirm('删除这个成片？')) { p.clips.splice(i, 1); vMarkDirty(); vRenderDetail(); } }
+
+function vExportJson() {
+  const blob = new Blob([JSON.stringify(vState, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'creation-workbench-video-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function vImportJson(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!data || !Array.isArray(data.projects)) throw new Error('文件里没有 projects 数组');
+      if (!confirm('导入会覆盖当前视频区的全部数据，确定吗？')) return;
+      vState = data; vMarkDirty(); vSave(); vRender();
+    } catch (e) { alert('导入失败：' + e.message); }
+  };
+  r.readAsText(f);
+  ev.target.value = '';
+}
+
+// ---- 生图区 ----
+let iState = { projects: [] };
+let iCurrentProjectId = null;
+let iCurrentView = 'list';
+
+const I_PROJECT_STATUS = ['进行中', '待验收', '已完成', '冻结', '待定'];
+const I_JOB_STATUS = ['待排队', '生成中', '已完成', '失败'];
+const I_DELIVERED = ['待发', '已发给用户'];
+const I_DEFAULT_MODEL = 'Qwen-Image-2.1（Colab）';
+
+async function iLoad() {
+  try {
+    const r = await fetch('/api/image/state');
+    iState = await r.json();
+    if (!Array.isArray(iState.projects)) iState = { projects: [] };
+  } catch (e) {
+    iState = { projects: [] };
+    alert('生图数据加载失败：' + e.message);
+  }
+}
+
+function iMarkDirty() {
+  setSaveState('保存中…', '#fbbf24');
+  clearTimeout(saveTimerI);
+  saveTimerI = setTimeout(iSave, 600);
+}
+
+async function iSave() {
+  try {
+    const r = await fetch('/api/image/state', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(iState)
+    });
+    if (r.ok) setSaveState('已保存', '#a7f3a7');
+    else setSaveState('保存失败', '#f87171');
+  } catch (e) {
+    setSaveState('保存失败', '#f87171');
+  }
+}
+
+function iGetProject(id) { return iState.projects.find(p => p.id === id); }
+
+function iRender() {
+  document.getElementById('i-view-list').classList.toggle('hidden', iCurrentView !== 'list');
+  document.getElementById('i-view-detail').classList.toggle('hidden', iCurrentView !== 'detail');
+  document.getElementById('i-view-gallery').classList.toggle('hidden', iCurrentView !== 'gallery');
+  if (iCurrentView === 'detail') iRenderDetail();
+  else if (iCurrentView === 'gallery') iRenderGallery();
+  else iRenderList();
+}
+
+function iRenderList() {
+  const box = document.getElementById('i-projectList');
+  if (!iState.projects.length) { box.innerHTML = '<p class="empty">还没有项目，点“新建项目”开始。</p>'; return; }
+  box.innerHTML = iState.projects.map(p => {
+    const jobs = p.jobs || [];
+    const done = jobs.filter(j => j.status === '已完成').length;
+    const pending = jobs.filter(j => j.delivered === '待发' && j.status === '已完成').length;
+    return `<div class="card" onclick="iOpenProject('${esc(p.id)}')">
+      <h2>${esc(p.name)}</h2>
+      <p><span class="badge ${esc(p.status)}">${esc(p.status)}</span></p>
+      <p>${esc(p.notes || '')}</p>
+      <p class="muted">生图任务 ${jobs.length} · 已完成 ${done}${pending ? ' · 待发给用户 ' + pending : ''}</p>
+    </div>`;
+  }).join('');
+}
+
+function iOpenProject(id) { iCurrentProjectId = id; iCurrentView = 'detail'; iRender(); window.scrollTo(0, 0); }
+function iShowList() { iCurrentProjectId = null; iCurrentView = 'list'; iRender(); window.scrollTo(0, 0); }
+function iShowGallery() { iCurrentProjectId = null; iCurrentView = 'gallery'; iRender(); window.scrollTo(0, 0); }
+
+function iAddProject() {
+  const p = { id: uid(), name: '新项目', status: '待定', notes: '', jobs: [] };
+  iState.projects.push(p);
+  iMarkDirty(); iOpenProject(p.id);
+}
+
+function iDeleteProject(id) {
+  if (!confirm('确定删除这个项目吗？里面的生图任务都会一起删掉。')) return;
+  iState.projects = iState.projects.filter(p => p.id !== id);
+  iCurrentProjectId = null; iMarkDirty(); iShowList();
+}
+
+function iRenderDetail() {
+  const p = iGetProject(iCurrentProjectId);
+  if (!p) { iShowList(); return; }
+  p.jobs = p.jobs || [];
+  const box = document.getElementById('i-projectDetail');
+  box.innerHTML = `
+    <div class="card">
+      <label>项目名称</label>
+      <input type="text" value="${esc(p.name)}" onchange="iUpdateProjectField('${esc(p.id)}','name',this.value)">
+      <label>状态</label>
+      <select onchange="iUpdateProjectField('${esc(p.id)}','status',this.value)">${statusOptions(I_PROJECT_STATUS, p.status)}</select>
+      <label>备注 / 铁律</label>
+      <textarea onchange="iUpdateProjectField('${esc(p.id)}','notes',this.value)">${esc(p.notes)}</textarea>
+      <div style="margin-top:14px"><button class="danger small" onclick="iDeleteProject('${esc(p.id)}')">删除项目</button></div>
+    </div>
+
+    <h2 class="section-title">🖼 生图任务</h2>
+    <div id="i-jobs">${p.jobs.map((j, i) => iJobHtml(p, j, i)).join('') || '<p class="empty">暂无生图任务（本工作台不跑生成，只记录）</p>'}</div>
+    <button onclick="iAddJob('${esc(p.id)}')">＋ 添加生图任务</button>`;
+}
+
+function iJobHtml(p, j, i) {
+  const refs = (j.refs || []).join('\n');
+  const thumbs = (j.refs || []).filter(isHttpUrl).map(u =>
+    `<img class="thumb" src="${esc(u)}" loading="lazy" onerror="this.style.display='none'">`).join('');
+  const resultThumb = isHttpUrl(j.result)
+    ? `<img class="thumb" src="${esc(j.result)}" loading="lazy" onerror="this.style.display='none'">` : '';
+  const resultLink = j.result
+    ? `<p>${isHttpUrl(j.result) ? `<a href="${esc(j.result)}" target="_blank" rel="noopener">打开成图 ↗</a>` : esc(j.result)}</p>` : '';
+  return `<div class="item">
+    <div class="row"><input type="text" value="${esc(j.title)}" placeholder="任务名称" onchange="iUpdateJob('${esc(p.id)}',${i},'title',this.value)">
+    <select style="max-width:130px" onchange="iUpdateJob('${esc(p.id)}',${i},'status',this.value)">${statusOptions(I_JOB_STATUS, j.status)}</select></div>
+    <label>模型</label>
+    <input type="text" value="${esc(j.model)}" onchange="iUpdateJob('${esc(p.id)}',${i},'model',this.value)">
+    <label>提示词</label>
+    <textarea onchange="iUpdateJob('${esc(p.id)}',${i},'prompt',this.value)">${esc(j.prompt)}</textarea>
+    <label>参考图（每行一个链接，只存链接不传文件）</label>
+    <textarea onchange="iUpdateJobRefs('${esc(p.id)}',${i},this.value)">${esc(refs)}</textarea>
+    ${thumbs}
+    <label>成图链接（Colab 生完把链接贴这里）</label>
+    <input type="text" value="${esc(j.result)}" placeholder="https://… 或文件路径" onchange="iUpdateJob('${esc(p.id)}',${i},'result',this.value)">
+    ${resultLink}
+    ${resultThumb}
+    <label>备注</label>
+    <input type="text" value="${esc(j.note)}" onchange="iUpdateJob('${esc(p.id)}',${i},'note',this.value)">
+    <label>交付</label>
+    <select onchange="iUpdateJob('${esc(p.id)}',${i},'delivered',this.value)">${statusOptions(I_DELIVERED, j.delivered)}</select>
+    <div style="margin-top:10px"><button class="danger small" onclick="iDeleteJob('${esc(p.id)}',${i})">删除任务</button></div>
+  </div>`;
+}
+
+function iRenderGallery() {
+  const box = document.getElementById('i-galleryBox');
+  const items = [];
+  iState.projects.forEach(p => {
+    (p.jobs || []).forEach(j => {
+      if (j.status === '已完成' && j.result) items.push({ project: p.name, job: j });
+    });
+  });
+  if (!items.length) { box.innerHTML = '<p class="empty">画廊还是空的：把任务状态改成“已完成”并填上成图链接，就会出现在这里。</p>'; return; }
+  box.innerHTML = items.map(({ project, job }) => {
+    const thumb = isHttpUrl(job.result)
+      ? `<img class="thumb" src="${esc(job.result)}" loading="lazy" onerror="this.style.display='none'">` : '';
+    const link = isHttpUrl(job.result)
+      ? `<p><a href="${esc(job.result)}" target="_blank" rel="noopener">打开成图 ↗</a></p>`
+      : `<p class="muted">${esc(job.result)}</p>`;
+    return `<div class="card">
+      <h2>${esc(job.title)}</h2>
+      <p class="muted">${esc(project)} · <span class="badge ${esc(job.delivered)}">${esc(job.delivered)}</span></p>
+      ${thumb}
+      ${link}
+      <p>${esc(job.note || '')}</p>
+    </div>`;
+  }).join('');
+}
+
+function iUpdateProjectField(id, field, value) { const p = iGetProject(id); if (p) { p[field] = value; iMarkDirty(); } }
+function iUpdateJob(pid, i, field, value) { const p = iGetProject(pid); if (p && p.jobs[i]) { p.jobs[i][field] = value; iMarkDirty(); } }
+function iUpdateJobRefs(pid, i, value) { const p = iGetProject(pid); if (p && p.jobs[i]) { p.jobs[i].refs = value.split('\n').map(s => s.trim()).filter(Boolean); iMarkDirty(); iRenderDetail(); } }
+
+function iAddJob(pid) {
+  const p = iGetProject(pid);
+  if (!p) return;
+  p.jobs = p.jobs || [];
+  p.jobs.push({ id: uid(), title: '新生图任务', prompt: '', refs: [], model: I_DEFAULT_MODEL, status: '待排队', result: '', note: '', delivered: '待发' });
+  iMarkDirty(); iRenderDetail();
+}
+function iDeleteJob(pid, i) { const p = iGetProject(pid); if (p && confirm('删除这个生图任务？')) { p.jobs.splice(i, 1); iMarkDirty(); iRenderDetail(); } }
+
+function iExportJson() {
+  const blob = new Blob([JSON.stringify(iState, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'creation-workbench-image-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function iImportJson(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!data || !Array.isArray(data.projects)) throw new Error('文件里没有 projects 数组');
+      if (!confirm('导入会覆盖当前生图区的全部数据，确定吗？')) return;
+      iState = data; iMarkDirty(); iSave(); iRender();
+    } catch (e) { alert('导入失败：' + e.message); }
+  };
+  r.readAsText(f);
+  ev.target.value = '';
+}
+
+load();
+</script>
+</body>
+</html>

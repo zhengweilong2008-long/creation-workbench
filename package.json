@@ -1,0 +1,1 @@
+{"description":"创作工作台 — AI 视频 + 生图执行工作台（二合一：视频项目/分镜/生成任务/成片 + 生图项目/任务/画廊），手机友好，零依赖。只记录，不生成。","engines":{"node":">=18"},"license":"MIT","main":"server.js","name":"creation-workbench","scripts":{"start":"node server.js"},"version":"1.0.0"}
