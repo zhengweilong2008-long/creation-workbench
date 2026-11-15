@@ -129,6 +129,9 @@ function setSaveState(text, color) {
   el.textContent = text; el.style.color = color;
 }
 
+// API 前缀：本地在根路径 /，Uppcoder 挂在 /app/ 下；按当前路径自动判断
+const API_BASE = (location.pathname === '/app' || location.pathname.startsWith('/app/')) ? '/app' : '';
+
 async function load() {
   await Promise.all([vLoad(), iLoad()]);
   if (currentTab === 'video') vRender(); else iRender();
@@ -145,7 +148,7 @@ const V_VERDICTS = ['待验收', '已通过', '不通过'];
 
 async function vLoad() {
   try {
-    const r = await fetch('/api/video/state');
+    const r = await fetch(API_BASE + '/api/video/state');
     vState = await r.json();
     if (!Array.isArray(vState.projects)) vState = { projects: [] };
   } catch (e) {
@@ -162,7 +165,7 @@ function vMarkDirty() {
 
 async function vSave() {
   try {
-    const r = await fetch('/api/video/state', {
+    const r = await fetch(API_BASE + '/api/video/state', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(vState)
     });
@@ -330,7 +333,7 @@ const I_DEFAULT_MODEL = 'Qwen-Image-2.1（Colab）';
 
 async function iLoad() {
   try {
-    const r = await fetch('/api/image/state');
+    const r = await fetch(API_BASE + '/api/image/state');
     iState = await r.json();
     if (!Array.isArray(iState.projects)) iState = { projects: [] };
   } catch (e) {
@@ -347,7 +350,7 @@ function iMarkDirty() {
 
 async function iSave() {
   try {
-    const r = await fetch('/api/image/state', {
+    const r = await fetch(API_BASE + '/api/image/state', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(iState)
     });
